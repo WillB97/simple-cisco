@@ -46,12 +46,18 @@ class Cisco():
     def config(self):
         self.run_command('config terminal')
     
-    def run_command(self, cmd):
+    def run_command(self, cmd, autoreconnect=False):
         self.tn.write(cmd.encode('ascii') + b'\n')
-        res = self.tn.read_until(b'#')
+        res = self.tn.read_until(b'#',3)
         if b'\n%' in res: # detect errors
             e = re.search(r'^(%.*)\r$', res.decode('ascii'), re.MULTILINE).groups()[0]
             raise ValueError(e)
+        if autoreconnect and not res.endswith(b'#'): # handle new IP requiring a reconnection
+            self.tn.close()
+            self.tn.open(self.host)
+            self.hostname = self.login(self.password)
+            print('Connection re-established to "{}"'.format(self.hostname))  
+            self.config()
         return res.decode('ascii').splitlines()[1:-1]
 
     def run_command_confirm(self, cmd):
@@ -78,12 +84,11 @@ class Cisco():
             if new_addr != 'dhcp':
                 self.run_command('ip address ' + new_addr + ' 255.255.255.0') 
                 print('New Management IP {} set'.format(new_addr))
+                self.host = new_addr
             else:
                 self.run_command('ip address dhcp')
                 print('Management IP set to DHCP')
-            
-            self.run_command('exit') ## handle new IP requiring a reconnection
-
+            self.run_command('exit', autoreconnect=True) # handle new IP requiring a reconnection       
             self.run_command('interface dot11Radio 0')
             self.run_command('encryption mode ciphers aes-ccm')
             self.run_command('speed range') # configure for maximum range

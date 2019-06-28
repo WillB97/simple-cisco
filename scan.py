@@ -1,7 +1,8 @@
 #! /usr/bin/env python3
-from scapy.all import get_if_list, get_if_addr, load_contrib, sniff
 
-def cdp_scan(all=False): ## add functionality to search for a mac address
+def cdp_scan(all=False): ## add functionality to search for a mac address (stop_filter)
+    from scapy.all import get_if_list, get_if_addr, load_contrib, sniff
+    
     load_contrib("cdp")
     addr_list=[]
     cisco = {}
