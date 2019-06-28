@@ -112,7 +112,12 @@ Commands:
         print(process_subcommand.__doc__)
         return 1
     if argv[1] == 'scan':
-        opts, args = getopt.getopt(argv[2:], 'a', ['all'])
+        scan_usage = """Usage: {0} scan [-a|--all]""".format(argv[0])
+        try:
+            opts, args = getopt.getopt(argv[2:], 'a', ['all'])
+        except getopt.GetoptError:
+            print(scan_usage)
+            return 1
         opt = [x[0] for x in opts]
         if '-a' in opt or '--all'in opt:
             print('60 second scan started for all cisco devices')
@@ -126,7 +131,16 @@ Commands:
                 print(mac + " @ " + ip)
         return 0
     elif argv[1] == 'init':
-        opts, args = getopt.getopt(argv[2:], 'a:i:c:m:p:', ['admin=', 'ip=', 'config=', 'curr-ip=', 'mac=', 'pass='])
+        init_usage = """Usage:
+        {0} init --admin=<new-password> --ip=<new-ip> --curr-ip=<ip> [--pass=<password>]
+        {0} init --admin=<new-password> --ip=<new-ip> --mac=<mac-address> [--pass=<password>]
+        {0} init --config=<path> --curr-ip=<ip> [--pass=<password>]
+        {0} init --config=<path> --mac=<mac-address> [--pass=<password>]""".format(argv[0])
+        try:
+            opts, args = getopt.getopt(argv[2:], 'a:i:c:m:p:', ['admin=', 'ip=', 'config=', 'curr-ip=', 'mac=', 'pass='])
+        except getopt.GetoptError:
+            print(init_usage)
+            return 1
         curr_ip = ''
         new_ip = ''
         curr_pass = 'Cisco'
@@ -157,7 +171,7 @@ Commands:
                 curr_pass = arg
 
         if '' in [curr_ip, new_ip, curr_pass, new_pass]:
-            print('Usage: {} init <--admin=Cisco --ip=192.168.1.2 | --config=ap.conf> <--curr-ip=192.168.2.2|--mac=> [--pass=Cisco]'.format(argv[0]))
+            print(init_usage)
             return 1
 
         conn = Cisco(host=curr_ip ,password=curr_pass)
@@ -165,10 +179,15 @@ Commands:
         return 0
     elif argv[1] == 'wifi':
         wifi_usage = """Usage:
-        {0} wifi <--admin=Cisco --ip=192.168.1.2 | --config=ap.conf> <on|off>
-        {0} wifi <--admin=Cisco --ip=192.168.1.2 | --config=ap.conf> clear
-        {0} wifi <--admin=Cisco --ip=192.168.1.2 | --config=ap.conf> [-52] --ssid=test --pass=password [<-5|-2> --ssid=...]""".format(argv[0])
-        opts, args = getopt.getopt(argv[2:], '52a:i:c:s:p:', ['admin=', 'ip=', 'config=', 'ssid=', 'pass='])
+        {0} wifi --admin=<password> --ip=<ip> <on | off | clear>
+        {0} wifi --config=<path> <on | off | clear>
+        {0} wifi --admin=<password> --ip=<ip> [-5 | -2] --ssid=<ssid> --pass=<wpa_psk> [<-5 | -2> --ssid=...]
+        {0} wifi --config=<path> [-5 | -2] --ssid=<ssid> --pass=<wpa_psk> [<-5 | -2> --ssid=...]""".format(argv[0])
+        try:
+            opts, args = getopt.getopt(argv[2:], '52a:i:c:s:p:', ['admin=', 'ip=', 'config=', 'ssid=', 'pass='])
+        except getopt.GetoptError:
+            print(wifi_usage)
+            return 1
         curr_ip = ''
         curr_pass = ''
         ssid5 = None
@@ -228,7 +247,14 @@ Commands:
             return 1
         return 0
     elif argv[1] == 'led':
-        opts, args = getopt.getopt(argv[2:], 'a:i:c:', ['admin=', 'ip=', 'config='])
+        led_usage = '''Usage: 
+        {0} led --admin=<password> --ip=<ip> <on|off>
+        {0} led --config=<confg-path> <on|off>'''.format(argv[0])
+        try:
+            opts, args = getopt.getopt(argv[2:], 'a:i:c:', ['admin=', 'ip=', 'config='])
+        except getopt.GetoptError:
+            print(led_usage)
+            return 1
         curr_ip = ''
         curr_pass = ''
 
@@ -241,10 +267,7 @@ Commands:
                 curr_ip, curr_pass = load_config(arg)
         
         if '' in [curr_ip, curr_pass]:
-            print('''Usage: 
-        {0} led --admin=<password> --ip=<ip> <on|off>
-        {0} led --config=<confg-path> <on|off>
-            '''.format(argv[0]))
+            print(led_usage)
             return 1
 
         conn = Cisco(host=curr_ip ,password=curr_pass)
@@ -253,14 +276,18 @@ Commands:
         elif len(args) and args[0] == 'off':
             conn.led_disable()
         else:
-            print('''Usage: 
-        {0} led --admin=<password> --ip=<ip> <on|off>
-        {0} led --config=<confg-path> <on|off>
-            '''.format(argv[0]))
+            print(led_usage)
             return 1
         return 0
     elif argv[1] == 'reset':
-        opts, args = getopt.getopt(argv[2:], 'a:i:c:', ['admin=', 'ip=', 'config=', 'all'])
+        reset_usage = '''Usage:
+        {0} reset --admin=<password> --ip=<ip> [--all]
+        {0} reset --config=<path> [--all]'''.format(argv[0])
+        try:
+            opts, args = getopt.getopt(argv[2:], 'a:i:c:', ['admin=', 'ip=', 'config=', 'all'])
+        except getopt.GetoptError:
+            print(reset_usage)
+            return 1
         curr_ip = ''
         curr_pass = ''
         clear_ip = False
@@ -276,7 +303,7 @@ Commands:
                 clear_ip = True
 
         if '' in [curr_ip, curr_pass]:
-            print('Usage: {} reset <--admin=Cisco --ip=192.168.1.2 | --config=ap.conf> [--all]'.format(argv[0]))
+            print(reset_usage)
             return 1
         
         conn = Cisco(host=curr_ip ,password=curr_pass)
