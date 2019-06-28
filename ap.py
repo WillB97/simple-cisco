@@ -50,8 +50,8 @@ def process_subcommand(argv):
                         and ip, which will be used in place of --admin and --ip respectively
              --curr-ip  The IP address which will be used to initially connect to the
                         access point
-         -m, --mac      The MAC address of the access point to be connected to. A 60
-                        second CDP scan is started to identify the IP of the device.
+         -m, --mac      The MAC address of the access point to be connected to. A CDP
+                        scan is started to identify the IP of the device.
                         On a factory reset device this will usually be the IPv6
                         link-local address unless a DHCP server in present.
          -p, --pass     The password to be initially used for the user and enable credentials
@@ -319,5 +319,214 @@ def process_subcommand(argv):
     print(trim(process_subcommand.__doc__))
     return 0
 
+def process_arguments(argv):
+    """
+        ap.py is a telnet based python script for configuring based functions on Cisco Aironet access points
+
+        Usage: ap.py <option>...
+
+        Options
+         -p, --admin=<pass>         The password to be used for the user and enable credentials.
+         -i, --ip=<ip>              The IP address which will be used to connect to the access point.
+         -c, --config=<path>        The path of a config file containing json data for password
+                                    and ip, which will be used in place of --admin and --ip respectively.
+         -S, --scan                 Monitor CDP traffic for IP address(es) of connected Cisco devices,
+                                    by default the scan terminates after a single device is discovered.
+                                    When used in combination with --all the scan runs for 
+                                    a fixed duration of 60 seconds.
+         -m, --mac=<mac-address>    The MAC address of the access point to be connected to.
+                                    A CDP scan will be started to identify the IP of the device.
+                                    On a factory reset device this will usually be the IPv6
+                                    link-local address unless a DHCP server in present.
+         -a, --all                  When used in combination with --scan the scan will run for
+                                    60 seconds regardless of devices found. 
+         -l, --led=<on|off>         Sets the state of the status LED on the access point.
+         -I, --init=<ip:pass>       Configure the access point with an admin and enable password,
+                                    enable encryption and configure all radios for maximum range.
+                                    The argument contains the IP address and password to be set,
+                                    separated by a colon.
+         -r, --reset                Perform a factory reset on the access point. When used in
+                                    combination with --all the IP configuration is also cleared.
+         -w, --wifi=<on|off|clear>  Toggle the state the wireless radios of the access point, or
+                                    clear all configured SSIDs from the access point
+         -5                         Only configure the following SSID on the 5 GHz radio.
+         -2                         Only configure the following SSID on the 2.4 GHz radio.
+         -s, --ssid=<ssid>          The SSID to be configured on the access point,
+                                    this is limited to 63 characters.
+         -k, --pass=<psk>           The pre-shared WPA2 key to be associated with the SSID,
+                                    this must between 8 and 32 characters.
+        Examples
+         ap.py --admin=Cisco --scan --all --init=192.168.1.5:Password
+         ap.py --config=ap.conf -5 --ssid='5GHzSSID' --pass="5GHzpass" -2 --ssid='2.4GHzSSID' --pass="2.4GHzpass"
+         ap.py --admin=Cisco --mac=00:07:7d:00:00:01 --led=off --wifi=clear
+         ap.py --admin=Cisco --ip=192.168.0.2 --reset
+
+    """
+
+    __usage__ = """
+        Usage: {0} [-p <pass> | --admin=<pass>] [-i <ip> | --ip=<ip>] [-c <path> | --config=<path>] [-S | --scan]
+                     [-m <mac-address> | --mac=<mac-address>] [-a | --all] [-l <on|off> | --led=<on|off>]
+                     [-I <ip:pass> | --init=<ip:pass>] [-r | --reset] [-w <on|off|clear> | --wifi=<on|off|clear>]
+                     [-5] [-2] [-s <ssid> | --ssid=<ssid>] [-k <psk> | --pass=<psk>]
+    """.format(sys.argv[0])
+
+    curr_pass = ''
+    curr_addr = ''
+    new_pass = ''
+    new_addr = ''
+    mac_addr = None
+    ssid5 = None
+    ssid2 = None
+    psk5 = None
+    psk2 = None
+    ssid_toggle = (True, True)
+    all_state = False
+    init_state = False
+    scan_state = False
+    wifi_clear = False
+    ssid_entry = False
+    wifi_state = None
+    led_state = None
+    reset_state = False
+
+    if len(argv) == 1:
+        print(trim(process_arguments.__doc__))
+        return 1
+    try:
+        opts, args = getopt.getopt(argv[1:], 'p:i:c:Sm:al:I:rw:52s:k:h',
+            ['admin=', 'ip=', 'config=', 'scan','mac', 'all', 'led=', 'init=', 'reset', 'wifi=', 'ssid=', 'pass=','help'])
+    except getopt.GetoptError:
+        print(trim(__usage__))
+        return 2
+
+    for opt,arg in opts:
+        if opt in ('-p','--admin'):
+            curr_pass = arg
+        elif opt in ('-i','--ip'):
+            curr_addr = arg
+        elif opt in ('-c','--config'):
+            curr_addr, curr_pass = load_config(arg)
+        elif opt in ('-S','--scan'):
+            scan_state = True
+        elif opt in ('-m','--mac'):
+            mac_addr = arg
+        elif opt in ('-a','--all'):
+            all_state = True
+        elif opt in ('-l','--led'):
+            if arg.lower() == 'on':
+                led_state = True
+            elif arg.lower() == 'off':
+                led_state = False
+        elif opt in ('-I','--init'): #--init=<ip:pass>
+            arg_parts = arg.split(':',1)
+            if len(arg_parts) == 2:
+                init_state = True
+                new_addr = arg_parts[0]
+                new_pass = arg_parts[1]
+            else:
+                print(' --init argument is in the form <ip>:<pass>')
+        elif opt in ('-r','--reset'):
+            reset_state = True
+        elif opt in ('-w','--wifi'):
+            if arg.lower() == 'on':
+                wifi_state = True
+            elif arg.lower() == 'off':
+                wifi_state = False
+            elif arg.lower() == 'clear':
+                wifi_clear = True
+        elif opt in ('-5',):
+            ssid_toggle = (True,False)
+        elif opt in ('-2',):
+            ssid_toggle = (False,True)
+        elif opt in ('-s','--ssid'):
+            ssid_entry = True
+            if ssid_toggle[0]: # Configure 5GHz radio
+                ssid5 = arg
+            if ssid_toggle[1]: # Configure 5GHz radio
+                ssid2 = arg
+        elif opt in ('-k','--pass'):
+            if ssid_toggle[0]: # Configure 5GHz radio
+                psk5 = arg
+            if ssid_toggle[1]: # Configure 5GHz radio
+                psk2 = arg
+        elif opt in ('-h','--help'):
+            print(trim(__usage__))
+            return 0
+
+    if args:
+        print(trim(__usage__))
+        return 2
+
+    telnet_state = True in (init_state, wifi_clear,ssid_entry,wifi_state,led_state,reset_state)
+    telnet_state |= False in (wifi_state,led_state)
+
+    if mac_addr: # mac scan
+        print('Started scanning for MAC address ' + mac_addr)
+        cdp = cdp_scan(mac=mac_addr)
+        if cdp:
+            ip  = list(cdp.values())[0]
+            if ip != 'no IP':
+                curr_addr = ip
+                print('MAC address {} found at {}'.format(mac_addr,ip))
+    if scan_state: # scan (interactive)
+        if all_state:
+            print('60 second scan started for all cisco devices')
+        else:
+            print('Started scanning for the access point')
+        cdp = cdp_scan(all=all_state)
+        if telnet_state:
+            i = 0
+            for mac,ip in cdp.items(): # offer found devices to user
+                print('{}: {} @ {}'.format(i,mac,ip))
+                i += 1
+            print('{}: skip'.format(i))
+            x = input('Select device to be configured: ')
+            if x.isdigit() and int(x) in range(i):
+                curr_addr = list(cdp.values())[int(x)]
+        else:
+            for mac,ip in cdp.items():
+                print('{} @ {}'.format(mac,ip))
+    # validate login creds
+    if telnet_state:
+        if curr_pass == '' or curr_addr == '':
+            print('Options --led, --init, --reset, --wifi, --ssid require --admin and --ip to be present')
+            return 2
+        conn = Cisco(host=curr_addr,password=curr_pass)
+    if init_state: # init
+        if new_pass == '':
+            print('--init requires a non-blank password')
+            return 1
+        conn.initialise(new_password=new_pass,new_addr=new_addr,batch=True)
+    if wifi_clear: # wifi clear
+        conn.wifi_clear(batch=True)
+    if ssid_entry: # ssid entry
+        # skip blank ssids, ssid len <32, psk len 8-63
+        if ssid2 and (len(ssid2) not in range(32) or len(psk2) not in range(8,64)):
+            print('SSIDs must be below 32 characters and passphrases must be between 8 and 63 characters')
+            return 2
+        if ssid5 and (len(ssid5) not in range(32) or len(psk5) not in range(8,64)):
+            print('SSIDs must be below 32 characters and passphrases must be between 8 and 63 characters')
+            return 2
+        conn.wifi_ssid(ssid_2=ssid2, psk_2=psk2,ssid_5=ssid5,psk_5=psk5, batch=True)
+    if wifi_state != None: # wifi state
+        if wifi_state:
+            conn.wifi_enable(batch=True)
+        else:
+            conn.wifi_disable(batch=True)
+    if led_state != None: # led state
+        if led_state:
+            conn.led_enable(batch=True)
+        else:
+            conn.led_disable(batch=True)
+    if reset_state: # reset
+        if all_state:
+            conn.reset(keep_ip=False, batch=True)
+        else:
+            conn.reset(batch=True)
+        return 0
+
+    if telnet_state:
+        conn.run_command('exit')
+
 if __name__ == "__main__":
-    exit(process_subcommand(sys.argv))
+    exit(process_arguments(sys.argv))

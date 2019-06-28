@@ -15,21 +15,15 @@ The script can:
 
 ## Usage:
 ```bash
-ap.py <command> --admin=<new-password> --ip=<new-ip> [<options>] [<args>]
-ap.py <command> --config=<path> [<options>] [<args>]
+ap.py [-p <pass> | --admin=<pass>] [-i <ip> | --ip=<ip>] [-c <path> | --config=<path>] [-S | --scan]
+      [-m <mac-address> | --mac=<mac-address>] [-a | --all] [-l <on|off> | --led=<on|off>]
+      [-I <ip:pass> | --init=<ip:pass>] [-r | --reset] [-w <on|off|clear> | --wifi=<on|off|clear>]
+      [-5] [-2] [-s <ssid> | --ssid=<ssid>] [-k <psk> | --pass=<psk>]
 ```
 
-Commands:
-
-    scan   Monitor CDP packets for the IP address of connected Cisco devices
-    init   Initialise an access point with a password and IP address
-    wifi   Manipulate wi-fi functionality including setting the SSID
-    led    Toggle the status LED on the access point
-    reset  Factory reset the access point, including the IP address
-
-
 ## Installation
-The script makes use of the [scapy](https://github.com/secdev/scapy) library in order to perform CDP packet monitoring.
+The script makes use of the [scapy](https://github.com/secdev/scapy)
+library in order to perform CDP packet monitoring for the scan function.
 
 ```bash
 pip install -r requirements.txt
