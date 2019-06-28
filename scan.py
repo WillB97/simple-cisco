@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 
-def cdp_scan(all=False): ## add functionality to search for a mac address (stop_filter)
+def cdp_scan(all=False, mac=None):
     from scapy.all import get_if_list, get_if_addr, load_contrib, sniff
     
     load_contrib("cdp")
@@ -12,10 +12,17 @@ def cdp_scan(all=False): ## add functionality to search for a mac address (stop_
         if get_if_addr(addr) not in ['0.0.0.0', '127.0.0.1']: # ignore interfaces without ip addresses and localhost
             addr_list.append(addr)
 
-    if all:
-        p = sniff(iface=addr_list, timeout=60, filter="ether dst 01:00:0c:cc:cc:cc")
+    if mac:
+        p1 = sniff(iface=addr_list, timeout=360, filter="ether dst 01:00:0c:cc:cc:cc", stop_filter=lambda x: x.src == mac)
+        if len(p1) and p1[-1].src == mac:
+            p = [p1[-1]]
+        else:
+            p = []
     else:
-        p = sniff(iface=addr_list, timeout=60, count=1, filter="ether dst 01:00:0c:cc:cc:cc")
+        if all:
+            p = sniff(iface=addr_list, timeout=60, filter="ether dst 01:00:0c:cc:cc:cc")
+        else:
+            p = sniff(iface=addr_list, timeout=60, count=1, filter="ether dst 01:00:0c:cc:cc:cc")
 
     for packet in p:
         try:

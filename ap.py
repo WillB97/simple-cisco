@@ -157,7 +157,7 @@ Commands:
                 curr_ip = arg
             elif opt in ('-m','--mac'):
                 print('Starting MAC address scan')
-                cdp = cdp_scan(all=True)
+                cdp = cdp_scan(mac=arg)
                 if arg not in cdp.keys():
                     print('MAC address {} was not found'.format(arg))
                     return 2
