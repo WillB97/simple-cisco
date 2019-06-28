@@ -123,13 +123,13 @@ def process_subcommand(argv):
         if '-a' in opt or '--all'in opt:
             print('60 second scan started for all cisco devices')
             cdp = cdp_scan(all=True)
-            for mac,ip in cdp.items():
-                print(mac + " @ " + ip)
+            for mac,ips in cdp.items():
+                print(mac + " @ " + ', '.join(ips[0]))
         else:
             print('Started scanning for the access point')
             cdp = cdp_scan()
-            for mac,ip in cdp.items():
-                print(mac + " @ " + ip)
+            for mac,ips in cdp.items():
+                print(mac + " @ " + ', '.join(ips[0]))
         return 0
     elif argv[1] == 'init':
         init_usage = """Usage:
@@ -162,11 +162,10 @@ def process_subcommand(argv):
                 if arg not in cdp.keys():
                     print('MAC address {} was not found'.format(arg))
                     return 2
-
-                if cdp[arg] == 'no IP':
+                if not cdp[arg][1]:
                     print('MAC address {} has no IP'.format(arg))
                     return 2
-                curr_ip = cdp[arg]
+                curr_ip = cdp[arg][1]
                 print('MAC address found at {} '.format(curr_ip))
             elif opt in ('-p','--pass'):
                 curr_pass = arg
@@ -465,9 +464,13 @@ def process_arguments(argv):
         cdp = cdp_scan(mac=mac_addr)
         if cdp:
             ip  = list(cdp.values())[0]
-            if ip != 'no IP':
-                curr_addr = ip
-                print('MAC address {} found at {}'.format(mac_addr,ip))
+            if ip[0]:
+                curr_addr = ip[1]
+                print('MAC address {} found at {}'.format(mac_addr,ip[1]))
+            else:
+                print('MAC address {} has no IP associated with it. Try connecting a DHCP server'.format(mac_addr))
+        else:
+            print('MAC address {} not found'.format(mac_addr))
     if scan_state: # scan (interactive)
         if all_state:
             print('60 second scan started for all cisco devices')
@@ -477,15 +480,15 @@ def process_arguments(argv):
         if telnet_state:
             i = 0
             for mac,ip in cdp.items(): # offer found devices to user
-                print('{}: {} @ {}'.format(i,mac,ip))
+                print('{}: {} @ {}'.format(i,mac,', '.join(ip[0])))
                 i += 1
             print('{}: skip'.format(i))
             x = input('Select device to be configured: ')
             if x.isdigit() and int(x) in range(i):
-                curr_addr = list(cdp.values())[int(x)]
+                curr_addr = list(cdp.values())[int(x)][1]
         else:
             for mac,ip in cdp.items():
-                print('{} @ {}'.format(mac,ip))
+                print('{} @ {}'.format(mac,', '.join(ip[0])))
     # validate login creds
     if telnet_state:
         if curr_pass == '' or curr_addr == '':

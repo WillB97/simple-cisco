@@ -1,8 +1,9 @@
 #! /usr/bin/env python3
+import re
 
 def cdp_scan(all=False, mac=None):
     try:
-        from scapy.all import get_if_list, get_if_addr, load_contrib, sniff
+        from scapy.all import get_if_list, get_if_addr, load_contrib, sniff, IP
     except ImportError:
         print('Scan functionality requires the scapy library to be installed')
         print('Use: "pip install scapy"')
@@ -30,20 +31,28 @@ def cdp_scan(all=False, mac=None):
             p = sniff(iface=addr_list, timeout=60, count=1, filter="ether dst 01:00:0c:cc:cc:cc")
 
     for packet in p:
-        try:
-            cisco[packet.src] = packet['CDPAddrRecordIPv4'].addr
-        except IndexError:
-            try:
-                if packet['CDPAddrRecordIPv6'].addr.startswith('fe80:'):
-                    cisco[packet.src] = packet['CDPAddrRecordIPv6'].addr + '%' + packet.sniffed_on
-                else:
-                    cisco[packet.src] = packet['CDPAddrRecordIPv6'].addr
-            except IndexError:
-                cisco[packet.src] = 'no IP'
+        pkg_addr = []
+        pref_ip = ''
+        for i in range(packet['CDPMsgAddr'].naddr):
+            if packet['CDPMsgAddr'].addr[i].addr.startswith('fe80:'):
+                pkg_addr.append(packet['CDPMsgAddr'].addr[i].addr + '%' + packet.sniffed_on)
+            else:
+                pkg_addr.append(packet['CDPMsgAddr'].addr[i].addr)
+        if packet['CDPMsgAddr'].naddr:
+            for ip in pkg_addr:
+                if ip.startswith('fe80:'): # use link-local IPv6 if reached
+                    pref_ip = ip
+                    break
+                if not re.search(r'^([0-2]?[0-9]{1,2}\.){3}[0-2]?[0-9]{1,2}$',ip): # skip other IPv6 addresses
+                    continue
+                if IP(dst=ip).route()[1] != '0.0.0.0' and IP(dst=ip).route()[2] == '0.0.0.0': # IPv4 address is routable
+                    pref_ip = ip
+                    break
+        cisco[packet.src] = (pkg_addr,pref_ip)
     return cisco
 
 if __name__ == "__main__":
     cdp = cdp_scan(all=True)
-    for mac,ip in cdp.items():
-        print(mac + " @ " + ip)
+    for mac,ips in cdp.items():
+        print(mac + " @ " + ', '.join(ips[0]) + ' (' + ips[1] + ')')
 
