@@ -90,6 +90,7 @@ exit
 #### Factory Reset
 all
 ```
+enable
 write memory
 write default-config
 y
@@ -99,11 +100,35 @@ y
 
 except IP
 ```
+enable
 write memory
 write erase
 y
 reload
 y
+```
+
+#### dhcp
+enable
+```
+enable
+config t
+! the ip address of the ap must be excluded
+ip dhcp excluded-address <ap-address>
+ip dhcp pool <name>
+network <network address> /24
+lease <days>|<hours> hours| infinite
+address range <start> <end>
+end
+write
+exit
+```
+
+disable
+```
+enable
+config t
+no ip dhcp pool
 ```
 
 #### login types
