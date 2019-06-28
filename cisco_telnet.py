@@ -42,10 +42,10 @@ class Cisco():
             raise ValueError('Invalid Enable Password')
         self.run_command('terminal length 0')
         return re.search(r'^(.*)#$',text_tup[2].decode('ascii'),re.MULTILINE).groups()[0]
-    
+
     def config(self):
         self.run_command('config terminal')
-    
+
     def run_command(self, cmd, autoreconnect=False):
         self.tn.write(cmd.encode('ascii') + b'\n')
         res = self.tn.read_until(b'#',3)
@@ -56,7 +56,7 @@ class Cisco():
             self.tn.close()
             self.tn.open(self.host)
             self.hostname = self.login(self.password)
-            print('Connection re-established to "{}"'.format(self.hostname))  
+            print('Connection re-established to "{}"'.format(self.hostname))
             self.config()
         return res.decode('ascii').splitlines()[1:-1]
 
@@ -76,19 +76,19 @@ class Cisco():
         self.run_command('write')
         if not batch:
             self.run_command('exit')
-    
+
     def initialise(self, new_password, new_addr='dhcp', batch=False):
         try:
             self.config()
             self.run_command('interface bvi 1')
             if new_addr != 'dhcp':
-                self.run_command('ip address ' + new_addr + ' 255.255.255.0') 
+                self.run_command('ip address ' + new_addr + ' 255.255.255.0')
                 print('New Management IP {} set'.format(new_addr))
                 self.host = new_addr
             else:
                 self.run_command('ip address dhcp')
                 print('Management IP set to DHCP')
-            self.run_command('exit', autoreconnect=True) # handle new IP requiring a reconnection       
+            self.run_command('exit', autoreconnect=True) # handle new IP requiring a reconnection
             self.run_command('interface dot11Radio 0')
             self.run_command('encryption mode ciphers aes-ccm')
             self.run_command('speed range') # configure for maximum range
@@ -139,7 +139,7 @@ class Cisco():
         except EOFError:
             print('Telnet connection closed unexpectedly')
             exit(1)
-    
+
     def wifi_clear(self, batch=False):
         try:
             ssids_raw = self.run_command('show running-config brief | include ssid')
@@ -157,7 +157,7 @@ class Cisco():
         except EOFError:
             print('Telnet connection closed unexpectedly')
             exit(1)
-    
+
     def wifi_ssid(self, ssid_2=None, psk_2=None, ssid_5=None, psk_5=None, batch=False):
         try:
             self.config()

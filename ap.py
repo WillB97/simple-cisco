@@ -2,6 +2,7 @@
 import getopt
 import sys
 import json
+from inspect import cleandoc as trim
 
 from scan import cdp_scan
 from cisco_telnet import Cisco
@@ -17,99 +18,99 @@ def load_config(path):
 
 def process_subcommand(argv):
     """ap.py is a telnet based python script for configuring based functions on Cisco
-Aironet access points
+        Aironet access points
 
-Usage: ap.py <command> --admin=<new-password> --ip=<new-ip> [<options>] [<args>]
-  or   ap.py <command> --config=<path> [<options>] [<args>]
+        Usage: ap.py <command> --admin=<new-password> --ip=<new-ip> [<options>] [<args>]
+          or   ap.py <command> --config=<path> [<options>] [<args>]
 
-Commands:
-   scan   Monitor CDP packets for the IP address of connected Cisco devices
-   init   Initialise an access point with a password and IP address
-   wifi   Manipulate wi-fi functionality including setting the SSID
-   led    Toggle the status LED on the access point
-   reset  Factory reset the access point, including the IP address
+        Commands:
+           scan   Monitor CDP packets for the IP address of connected Cisco devices
+           init   Initialise an access point with a password and IP address
+           wifi   Manipulate wi-fi functionality including setting the SSID
+           led    Toggle the status LED on the access point
+           reset  Factory reset the access point, including the IP address
     """
     __info__ = """Options:
-{0} scan [-a|--all]
-                CDP traffic is monitored for MAC and IP addresses, by default
-                the scan terminates after a single device is discovered
- -a, --all      CDP traffic in monitored for MAC/IP addresses for 60 seconds
-                regardless of how many devices are discovered
+        {0} scan [-a|--all]
+                        CDP traffic is monitored for MAC and IP addresses, by default
+                        the scan terminates after a single device is discovered
+         -a, --all      CDP traffic in monitored for MAC/IP addresses for 60 seconds
+                        regardless of how many devices are discovered
 
-{0} init --admin=<new-password> --ip=<new-ip> --curr-ip=<ip> [--pass=<password>]
-{0} init --admin=<new-password> --ip=<new-ip> --mac=<mac-address> [--pass=<password>]
-{0} init --config=<path> --curr-ip=<ip> [--pass=<password>]
-{0} init --config=<path> --mac=<mac-address> [--pass=<password>]
-                The access point is configured with an admin and enable password,
-                encryption is enabled and all the radios are configured for
-                maximum range.
- -a, --admin    The password to be set for the user and enable passwords
- -i, --ip       The IP address to be set on the management interface
- -c, --config   The path of a config file containing json data for password
-                and ip, which will be used in place of --admin and --ip respectively
-     --curr-ip  The IP address which will be used to initially connect to the
-                access point
- -m, --mac      The MAC address of the access point to be connected to. A 60
-                second CDP scan is started to identify the IP of the device.
-                On a factory reset device this will usually be the IPv6
-                link-local address unless a DHCP server in present.
- -p, --pass     The password to be initially used for the user and enable credentials
+        {0} init --admin=<new-password> --ip=<new-ip> --curr-ip=<ip> [--pass=<password>]
+        {0} init --admin=<new-password> --ip=<new-ip> --mac=<mac-address> [--pass=<password>]
+        {0} init --config=<path> --curr-ip=<ip> [--pass=<password>]
+        {0} init --config=<path> --mac=<mac-address> [--pass=<password>]
+                        The access point is configured with an admin and enable password,
+                        encryption is enabled and all the radios are configured for
+                        maximum range.
+         -a, --admin    The password to be set for the user and enable passwords
+         -i, --ip       The IP address to be set on the management interface
+         -c, --config   The path of a config file containing json data for password
+                        and ip, which will be used in place of --admin and --ip respectively
+             --curr-ip  The IP address which will be used to initially connect to the
+                        access point
+         -m, --mac      The MAC address of the access point to be connected to. A 60
+                        second CDP scan is started to identify the IP of the device.
+                        On a factory reset device this will usually be the IPv6
+                        link-local address unless a DHCP server in present.
+         -p, --pass     The password to be initially used for the user and enable credentials
 
-{0} wifi --admin=<password> --ip=<ip> <on | off>
-{0} wifi --config=<path> <on | off>
-                Toggle the state the wireless radios of the access point
- -a, --admin    The password to be used for the user and enable credentials
- -i, --ip       The IP address which will be used to connect to the access point
- -c, --config   The path of a config file containing json data for password
-                and ip, which will be used in place of --admin and --ip respectively
+        {0} wifi --admin=<password> --ip=<ip> <on | off>
+        {0} wifi --config=<path> <on | off>
+                        Toggle the state the wireless radios of the access point
+         -a, --admin    The password to be used for the user and enable credentials
+         -i, --ip       The IP address which will be used to connect to the access point
+         -c, --config   The path of a config file containing json data for password
+                        and ip, which will be used in place of --admin and --ip respectively
 
-{0} wifi --admin=<password> --ip=<ip> clear
-{0} wifi --config=<path> clear
-                Remove all configured SSIDs from the access point
- -a, --admin    The password to be used for the user and enable credentials
- -i, --ip       The IP address which will be used to connect to the access point
- -c, --config   The path of a config file containing json data for password
-                and ip, which will be used in place of --admin and --ip respectively
+        {0} wifi --admin=<password> --ip=<ip> clear
+        {0} wifi --config=<path> clear
+                        Remove all configured SSIDs from the access point
+         -a, --admin    The password to be used for the user and enable credentials
+         -i, --ip       The IP address which will be used to connect to the access point
+         -c, --config   The path of a config file containing json data for password
+                        and ip, which will be used in place of --admin and --ip respectively
 
-{0} wifi --admin=<password> --ip=<ip> [-5 | -2] --ssid=<ssid> --pass=<wpa_psk>
-             [[-5 | -2] --ssid= ...]
-{0} wifi --config=<path> [-5 | -2] --ssid=<ssid> --pass=<wpa_psk>
-             [[-5 | -2] --ssid= ...]
-                Configure the SSID to be used, the SSID can be limited to the
-                5 GHz or 2.4 GHz radio or separate SSIDs can be given to the
-                2.4 and 5 GHz radios.
-                i.e. {0} wifi --config=ap.conf -5 --ssid='5GHzSSID' --pass="5GHzpass"
-                            -2 --ssid='2.4GHzSSID' --pass="2.4GHzpass"
- -a, --admin    The password to be used for the user and enable credentials
- -i, --ip       The IP address which will be used to connect to the access point
- -c, --config   The path of a config file containing json data for password
-                and ip, which will be used in place of --admin and --ip respectively
- -5             Only configure the following SSID on the 5 GHz radio
- -2             Only configure the following SSID on the 2.4 GHz radio
- -s, --ssid     The SSID to be used
- -p, --pass     The pre-shared key to be associated with the SSID
+        {0} wifi --admin=<password> --ip=<ip> [-5 | -2] --ssid=<ssid> --pass=<wpa_psk>
+                     [[-5 | -2] --ssid= ...]
+        {0} wifi --config=<path> [-5 | -2] --ssid=<ssid> --pass=<wpa_psk>
+                     [[-5 | -2] --ssid= ...]
+                        Configure the SSID to be used, the SSID can be limited to the
+                        5 GHz or 2.4 GHz radio or separate SSIDs can be given to the
+                        2.4 and 5 GHz radios.
+                        i.e. {0} wifi --config=ap.conf -5 --ssid='5GHzSSID' --pass="5GHzpass"
+                                    -2 --ssid='2.4GHzSSID' --pass="2.4GHzpass"
+         -a, --admin    The password to be used for the user and enable credentials
+         -i, --ip       The IP address which will be used to connect to the access point
+         -c, --config   The path of a config file containing json data for password
+                        and ip, which will be used in place of --admin and --ip respectively
+         -5             Only configure the following SSID on the 5 GHz radio
+         -2             Only configure the following SSID on the 2.4 GHz radio
+         -s, --ssid     The SSID to be used
+         -p, --pass     The pre-shared key to be associated with the SSID
 
-{0} led --admin=<password> --ip=<ip> <on | off>
-{0} led --config=<path> <on | off>
-                Toggle the state of the LED on the access point
- -a, --admin    The password to be used for the user and enable credentials
- -i, --ip       The IP address which will be used to connect to the access point
- -c, --config   The path of a config file containing json data for password
-                and ip, which will be used in place of --admin and --ip respectively
+        {0} led --admin=<password> --ip=<ip> <on | off>
+        {0} led --config=<path> <on | off>
+                        Toggle the state of the LED on the access point
+         -a, --admin    The password to be used for the user and enable credentials
+         -i, --ip       The IP address which will be used to connect to the access point
+         -c, --config   The path of a config file containing json data for password
+                        and ip, which will be used in place of --admin and --ip respectively
 
-{0} reset --admin=<password> --ip=<ip> [--all]
-{0} reset --config=<path> [--all]
-                Perform a factory reset on the access point, by default the IP
-                address is maintained
- -a, --admin    The password to be used for the user and enable credentials
- -i, --ip       The IP address which will be used to connect to the access point
- -c, --config   The path of a config file containing json data for password
-                and ip, which will be used in place of --admin and --ip respectively
-     --all      Additionally clear the configured IP address
+        {0} reset --admin=<password> --ip=<ip> [--all]
+        {0} reset --config=<path> [--all]
+                        Perform a factory reset on the access point, by default the IP
+                        address is maintained
+         -a, --admin    The password to be used for the user and enable credentials
+         -i, --ip       The IP address which will be used to connect to the access point
+         -c, --config   The path of a config file containing json data for password
+                        and ip, which will be used in place of --admin and --ip respectively
+             --all      Additionally clear the configured IP address
 
     """.format('ap.py')
     if len(argv) == 1:
-        print(process_subcommand.__doc__)
+        print(trim(process_subcommand.__doc__))
         return 1
     if argv[1] == 'scan':
         scan_usage = """Usage: {0} scan [-a|--all]""".format(argv[0])
@@ -124,7 +125,7 @@ Commands:
             cdp = cdp_scan(all=True)
             for mac,ip in cdp.items():
                 print(mac + " @ " + ip)
-        else:  
+        else:
             print('Started scanning for the access point')
             cdp = cdp_scan()
             for mac,ip in cdp.items():
@@ -161,7 +162,7 @@ Commands:
                 if arg not in cdp.keys():
                     print('MAC address {} was not found'.format(arg))
                     return 2
-                
+
                 if cdp[arg] == 'no IP':
                     print('MAC address {} has no IP'.format(arg))
                     return 2
@@ -247,7 +248,7 @@ Commands:
             return 1
         return 0
     elif argv[1] == 'led':
-        led_usage = '''Usage: 
+        led_usage = '''Usage:
         {0} led --admin=<password> --ip=<ip> <on|off>
         {0} led --config=<confg-path> <on|off>'''.format(argv[0])
         try:
@@ -265,7 +266,7 @@ Commands:
                 curr_ip = arg
             elif opt in ('-c','--config'):
                 curr_ip, curr_pass = load_config(arg)
-        
+
         if '' in [curr_ip, curr_pass]:
             print(led_usage)
             return 1
@@ -305,17 +306,17 @@ Commands:
         if '' in [curr_ip, curr_pass]:
             print(reset_usage)
             return 1
-        
+
         conn = Cisco(host=curr_ip ,password=curr_pass)
         if clear_ip:
             conn.reset(keep_ip=False)
         else:
             conn.reset()
     elif argv[1] == 'help':
-        print(process_subcommand.__doc__)
-        print(__info__)
+        print(trim(process_subcommand.__doc__))
+        print(trim(__info__))
 
-    print(process_subcommand.__doc__)
+    print(trim(process_subcommand.__doc__))
     return 0
 
 if __name__ == "__main__":

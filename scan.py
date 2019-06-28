@@ -2,7 +2,7 @@
 
 def cdp_scan(all=False, mac=None):
     from scapy.all import get_if_list, get_if_addr, load_contrib, sniff
-    
+
     load_contrib("cdp")
     addr_list=[]
     cisco = {}
