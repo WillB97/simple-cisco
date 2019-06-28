@@ -1,7 +1,12 @@
 #! /usr/bin/env python3
 
 def cdp_scan(all=False, mac=None):
-    from scapy.all import get_if_list, get_if_addr, load_contrib, sniff
+    try:
+        from scapy.all import get_if_list, get_if_addr, load_contrib, sniff
+    except ImportError:
+        print('Scan functionality requires the scapy library to be installed')
+        print('Use: "pip install scapy"')
+        exit(-1)
 
     load_contrib("cdp")
     addr_list=[]
