@@ -348,6 +348,10 @@ def process_arguments(argv):
                                     combination with --all the IP configuration is also cleared.
          -w, --wifi=<on|off|clear>  Toggle the state the wireless radios of the access point, or
                                     clear all configured SSIDs from the access point
+         -d, --dhcp=<start>-<end>|off
+                                    Toggle the state of the internal DHCP server. The server is enabled
+                                    by providing the lower octet of the top and bottom IP addresses.
+                                    The rest of the address will be extracted from the AP management address.
          -5                         Only configure the following SSID on the 5 GHz radio.
          -2                         Only configure the following SSID on the 2.4 GHz radio.
          -s, --ssid=<ssid>          The SSID to be configured on the access point,
@@ -365,8 +369,8 @@ def process_arguments(argv):
     __usage__ = """
         Usage: {0} [-p <pass> | --admin=<pass>] [-i <ip> | --ip=<ip>] [-c <path> | --config=<path>] [-S | --scan]
                      [-m <mac-address> | --mac=<mac-address>] [-a | --all] [-l <on|off> | --led=<on|off>]
-                     [-I <ip:pass> | --init=<ip:pass>] [-r | --reset] [-w <on|off|clear> | --wifi=<on|off|clear>]
-                     [-5] [-2] [-s <ssid> | --ssid=<ssid>] [-k <psk> | --pass=<psk>]
+                     [-I <ip:pass> | --init=<ip:pass>] [-r | --reset] [-d <start>-<end>|off | --dhcp <start>-<end>|off]
+                     [-w <on|off|clear> | --wifi=<on|off|clear>] [-5] [-2] [-s <ssid> | --ssid=<ssid>] [-k <psk> | --pass=<psk>]
     """.format(sys.argv[0])
 
     curr_pass = ''
@@ -379,10 +383,12 @@ def process_arguments(argv):
     psk5 = None
     psk2 = None
     ssid_toggle = (True, True)
+    dhcp_vals = []
     all_state = False
     init_state = False
     scan_state = False
     wifi_clear = False
+    dhcp_state = None
     ssid_entry = False
     wifi_state = None
     led_state = None
@@ -392,8 +398,8 @@ def process_arguments(argv):
         print(trim(process_arguments.__doc__))
         return 1
     try:
-        opts, args = getopt.getopt(argv[1:], 'p:i:c:Sm:al:I:rw:52s:k:h',
-            ['admin=', 'ip=', 'config=', 'scan','mac', 'all', 'led=', 'init=', 'reset', 'wifi=', 'ssid=', 'pass=','help'])
+        opts, args = getopt.getopt(argv[1:], 'p:i:c:Sm:al:I:rw:52s:k:hd:', ['admin=', 'ip=', 'config=',
+            'scan','mac', 'all', 'led=', 'init=', 'reset', 'wifi=', 'ssid=', 'pass=', 'help', 'dhcp='])
     except getopt.GetoptError:
         print(trim(__usage__))
         return 2
@@ -451,13 +457,26 @@ def process_arguments(argv):
         elif opt in ('-h','--help'):
             print(trim(__usage__))
             return 0
+        elif opt in ('-d','--dhcp'):
+            arg_parts = arg.split('-',1)
+            if arg.lower() == 'off':
+                dhcp_state = False
+            elif len(arg_parts) == 2:
+                if not arg_parts[0].isdigit() or not arg_parts[1].isdigit():
+                    print('--dhcp start and end values are the lower octet of the IP addresses')
+                else:
+                    dhcp_state = True
+                    dhcp_vals = arg_parts
+            else:
+                print(' --dhcp argument is in the form <start>-<end> or off')
+
 
     if args:
         print(trim(__usage__))
         return 2
 
-    telnet_state = True in (init_state, wifi_clear,ssid_entry,wifi_state,led_state,reset_state)
-    telnet_state |= False in (wifi_state,led_state)
+    telnet_state = True in (init_state, wifi_clear,ssid_entry,wifi_state,led_state,reset_state,dhcp_state)
+    telnet_state |= False in (wifi_state,led_state,dhcp_state)
 
     if mac_addr: # mac scan
         print('Started scanning for MAC address ' + mac_addr)
@@ -502,6 +521,14 @@ def process_arguments(argv):
         conn.initialise(new_password=new_pass,new_addr=new_addr,batch=True)
     if wifi_clear: # wifi clear
         conn.wifi_clear(batch=True)
+    if dhcp_state != None: # dhcp
+        if dhcp_state == False:
+            conn.dhcp_off(batch=True)
+        else:
+            try:
+                conn.dhcp(dhcp_vals[0], dhcp_vals[1], batch=True)
+            except ValueError as e:
+                print(e)
     if ssid_entry: # ssid entry
         # skip blank ssids, ssid len <32, psk len 8-63
         if ssid2 and (len(ssid2) not in range(32) or len(psk2) not in range(8,64)):

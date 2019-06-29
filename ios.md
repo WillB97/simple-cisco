@@ -113,11 +113,12 @@ enable
 ```
 enable
 config t
-! the ip address of the ap must be excluded
-ip dhcp excluded-address <ap-address>
+! the ip address of the ap is automatically excluded
+[ip dhcp excluded-address <ip-address>]
 ip dhcp pool <name>
 network <network address> /24
 lease <days>|<hours> hours| infinite
+class <class-name>
 address range <start> <end>
 end
 write

@@ -222,10 +222,41 @@ class Cisco():
             exit(1)
 
     def dhcp(self, start, end, batch=False):
-        pass
+        start_addr = int(start)
+        end_addr = int(end)
+        if start_addr not in range(255) or end_addr not in range(255):
+            raise ValueError('Start and end values must be in the range 0 to 255')
+        if end_addr <= start_addr:
+            raise ValueError('Start value must be lower than the end value')
+        try:
+            if_addr = self.run_command('show ip interface bvI 1 | include Internet') # get interface IP for network address
+            self.config()
+            self.run_command('ip dhcp pool 0')
+            if_list = if_addr[0].split()[3].split('.')
+            net_prefix = if_list[0] + '.' + if_list[1] + '.' + if_list[2]
+            self.run_command('network ' + net_prefix + '.0 /24')
+            self.run_command('lease 10')
+            self.run_command('class class1')
+            self.run_command('address range ' + net_prefix + '.' + str(start_addr) + ' ' + net_prefix + '.' + str(end_addr))
+            print('DHCP server started for {0}.{1} - {0}.{2}'.format(net_prefix,start_addr,end_addr))
+            self.save_and_exit(batch)
+        except EOFError:
+            print('Telnet connection closed unexpectedly')
+            exit(1)
 
     def dhcp_off(self, batch=False):
-        pass
+        try:
+            self.config()
+            try:
+                self.run_command('no ip dhcp pool 0')
+                self.run_command('no ip dhcp class class1')
+                print('DHCP pool removed')
+            except ValueError:
+                print('DHCP pool was not configured')
+            self.save_and_exit(batch)
+        except EOFError:
+            print('Telnet connection closed unexpectedly')
+            exit(1)
 
     def reset(self, keep_ip=True, batch=False):
         try:
