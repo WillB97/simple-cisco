@@ -142,7 +142,7 @@ class Cisco():
 
     def wifi_clear(self, batch=False):
         try:
-            ssids_raw = self.run_command('show running-config brief | include ssid')
+            ssids_raw = self.run_command('show running-config brief | include dot11 ssid')
             ssids = []
             for ssid_raw in ssids_raw:
                 ssid = re.search(r'^\s*dot11\s+ssid\s+(.*)$', ssid_raw)
