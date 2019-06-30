@@ -6,7 +6,11 @@ class Cisco():
     def __init__(self, host, password):
         self.host = host
         self.password = password
-        self.tn = telnetlib.Telnet(host,timeout=3)
+        try:
+            self.tn = telnetlib.Telnet(host,timeout=3)
+        except telnetlib.socket.timeout:
+            print('Telnet connection failed')
+            exit(1)
         print('Connection Established')
         self.hostname = self.login(password)
         print('Login to "{}" Completed'.format(self.hostname))
@@ -58,7 +62,11 @@ class Cisco():
             raise ValueError(e)
         if autoreconnect and not res.endswith(b'#'): # handle new IP requiring a reconnection
             self.tn.close()
-            self.tn.open(self.host)
+            try:
+                self.tn.open(self.host, timeout=3)
+            except telnetlib.socket.timeout:
+                print('Telnet address ' + self.host + ' would not connect')
+                exit(1)
             self.hostname = self.login(self.password)
             print('Connection re-established to "{}"'.format(self.hostname))
             self.config()
@@ -97,7 +105,7 @@ class Cisco():
             self.run_command('username Cisco privilege 15 password 0 ' + new_password.replace('?',b'\x16?'.decode('ascii')))  # replace '?' with ^V?
             print('User password updated')
             self.save_and_exit(batch)
-        except EOFError:
+        except (EOFError, telnetlib.socket.error):
             print('Telnet connection closed unexpectedly')
             exit(1)
         print('Initialisation complete')
@@ -114,7 +122,7 @@ class Cisco():
             self.run_command('no shutdown')
             print('5GHz radio enabled')
             self.save_and_exit(batch)
-        except EOFError:
+        except (EOFError, telnetlib.socket.error):
             print('Telnet connection closed unexpectedly')
             exit(1)
 
@@ -129,7 +137,7 @@ class Cisco():
             self.run_command('shutdown')
             print('5GHz radio disabled')
             self.save_and_exit(batch)
-        except EOFError:
+        except (EOFError, telnetlib.socket.error):
             print('Telnet connection closed unexpectedly')
             exit(1)
 
@@ -147,7 +155,7 @@ class Cisco():
                 print('Removed ' + ssid)
             self.save_and_exit(batch)
             print('Cleared all SSIDs')
-        except EOFError:
+        except (EOFError, telnetlib.socket.error):
             print('Telnet connection closed unexpectedly')
             exit(1)
 
@@ -190,7 +198,7 @@ class Cisco():
                 self.run_command('no shutdown')
                 print('Added SSID "{}" on 5GHz Radio'.format(ssid_5))
             self.save_and_exit(batch)
-        except EOFError:
+        except (EOFError, telnetlib.socket.error):
             print('Telnet connection closed unexpectedly')
             exit(1)
 
@@ -200,7 +208,7 @@ class Cisco():
             self.run_command('no led display off')
             self.save_and_exit(batch)
             print('LED enabled')
-        except EOFError:
+        except (EOFError, telnetlib.socket.error):
             print('Telnet connection closed unexpectedly')
             exit(1)
 
@@ -210,7 +218,7 @@ class Cisco():
             self.run_command('led display off')
             self.save_and_exit(batch)
             print('LED disabled')
-        except EOFError:
+        except (EOFError, telnetlib.socket.error):
             print('Telnet connection closed unexpectedly')
             exit(1)
 
@@ -233,7 +241,7 @@ class Cisco():
             self.run_command('address range ' + net_prefix + '.' + str(start_addr) + ' ' + net_prefix + '.' + str(end_addr))
             print('DHCP server started for {0}.{1} - {0}.{2}'.format(net_prefix,start_addr,end_addr))
             self.save_and_exit(batch)
-        except EOFError:
+        except (EOFError, telnetlib.socket.error):
             print('Telnet connection closed unexpectedly')
             exit(1)
 
@@ -247,7 +255,7 @@ class Cisco():
             except ValueError:
                 print('DHCP pool was not configured')
             self.save_and_exit(batch)
-        except EOFError:
+        except (EOFError, telnetlib.socket.error):
             print('Telnet connection closed unexpectedly')
             exit(1)
 
@@ -259,7 +267,7 @@ class Cisco():
             else:
                 self.run_command('write default-config', confirm=True)
             self.run_command('reload', confirm=True)
-        except EOFError:
+        except (EOFError, telnetlib.socket.error):
             print('Telnet connection closed unexpectedly')
             exit(1)
         print('Reset complete, AP rebooting')

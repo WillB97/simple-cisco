@@ -116,9 +116,9 @@ def process_arguments(argv):
         elif opt in ('-a','--all'):
             all_state = True
         elif opt in ('-l','--led'):
-            if arg.lower() == 'on':
+            if arg.lower() in ('on','+'):
                 led_state = True
-            elif arg.lower() == 'off':
+            elif arg.lower() in ('off','-'):
                 led_state = False
         elif opt in ('-I','--init'): #--init=<ip:pass>
             arg_parts = arg.split(':',1)
@@ -131,11 +131,11 @@ def process_arguments(argv):
         elif opt in ('-r','--reset'):
             reset_state = True
         elif opt in ('-w','--wifi'):
-            if arg.lower() == 'on':
+            if arg.lower() in ('on','+'):
                 wifi_state = True
-            elif arg.lower() == 'off':
+            elif arg.lower() in ('off','-'):
                 wifi_state = False
-            elif arg.lower() == 'clear':
+            elif arg.lower() in ('clear','x'):
                 wifi_clear = True
         elif opt in ('-5',):
             ssid_toggle = (True,False)
@@ -157,7 +157,7 @@ def process_arguments(argv):
             return 0
         elif opt in ('-d','--dhcp'):
             arg_parts = arg.split('-',1)
-            if arg.lower() == 'off':
+            if arg.lower() in ('off','-'):
                 dhcp_state = False
             elif len(arg_parts) == 2:
                 if not arg_parts[0].isdigit() or not arg_parts[1].isdigit():
@@ -169,7 +169,6 @@ def process_arguments(argv):
                 print(' --dhcp argument is in the form <start>-<end> or off')
         elif opt in ('-v'):
             debug_state = True
-
 
     if args:
         print(trim(__usage__))
@@ -208,56 +207,59 @@ def process_arguments(argv):
         else:
             for mac,ip in cdp.items():
                 print('{} @ {}'.format(mac,', '.join(ip[0])))
-    # validate login creds
-    if telnet_state:
-        if curr_pass == '' or curr_addr == '':
-            print('Options --led, --init, --reset, --wifi, --ssid require --admin and --ip to be present')
-            return 2
-        conn = Cisco(host=curr_addr,password=curr_pass)
-        if debug_state:
-            conn.tn.set_debuglevel(1)
-    if init_state: # init
-        if new_pass == '':
-            print('--init requires a non-blank password')
-            return 1
-        conn.initialise(new_password=new_pass,new_addr=new_addr,batch=True)
-    if wifi_clear: # wifi clear
-        conn.wifi_clear(batch=True)
-    if dhcp_state != None: # dhcp
-        if dhcp_state == False:
-            conn.dhcp_off(batch=True)
-        else:
-            try:
-                conn.dhcp(dhcp_vals[0], dhcp_vals[1], batch=True)
-            except ValueError as e:
-                print(e)
-    if ssid_entry: # ssid entry
-        # skip blank ssids, ssid len <32, psk len 8-63
-        if ssid2 and (len(ssid2) not in range(32) or len(psk2) not in range(8,64)):
-            print('SSIDs must be below 32 characters and passphrases must be between 8 and 63 characters')
-            return 2
-        if ssid5 and (len(ssid5) not in range(32) or len(psk5) not in range(8,64)):
-            print('SSIDs must be below 32 characters and passphrases must be between 8 and 63 characters')
-            return 2
-        conn.wifi_ssid(ssid_2=ssid2, psk_2=psk2,ssid_5=ssid5,psk_5=psk5, batch=True)
-    if wifi_state != None: # wifi state
-        if wifi_state:
-            conn.wifi_enable(batch=True)
-        else:
-            conn.wifi_disable(batch=True)
-    if led_state != None: # led state
-        if led_state:
-            conn.led_enable(batch=True)
-        else:
-            conn.led_disable(batch=True)
-    if reset_state: # reset
-        if all_state:
-            conn.reset(keep_ip=False, batch=True)
-        else:
-            conn.reset(batch=True)
-        return 0
+    try:
+        if telnet_state: # validate login creds
+            if curr_pass == '' or curr_addr == '':
+                print('Options --led, --init, --reset, --wifi, --ssid require --admin and --ip to be present')
+                return 2
+            conn = Cisco(host=curr_addr,password=curr_pass)
+            if debug_state:
+                conn.tn.set_debuglevel(1)
+        if init_state: # init
+            if new_pass == '':
+                print('--init requires a non-blank password')
+                return 1
+            conn.initialise(new_password=new_pass,new_addr=new_addr,batch=True)
+        if wifi_clear: # wifi clear
+            conn.wifi_clear(batch=True)
+        if dhcp_state != None: # dhcp
+            if dhcp_state == False:
+                conn.dhcp_off(batch=True)
+            else:
+                try:
+                    conn.dhcp(dhcp_vals[0], dhcp_vals[1], batch=True)
+                except ValueError as e:
+                    print(e)
+        if ssid_entry: # ssid entry
+            # skip blank ssids, ssid len <32, psk len 8-63
+            if ssid2 and (len(ssid2) not in range(32) or len(psk2) not in range(8,64)):
+                print('SSIDs must be below 32 characters and passphrases must be between 8 and 63 characters')
+                return 2
+            if ssid5 and (len(ssid5) not in range(32) or len(psk5) not in range(8,64)):
+                print('SSIDs must be below 32 characters and passphrases must be between 8 and 63 characters')
+                return 2
+            conn.wifi_ssid(ssid_2=ssid2, psk_2=psk2,ssid_5=ssid5,psk_5=psk5, batch=True)
+        if wifi_state != None: # wifi state
+            if wifi_state:
+                conn.wifi_enable(batch=True)
+            else:
+                conn.wifi_disable(batch=True)
+        if led_state != None: # led state
+            if led_state:
+                conn.led_enable(batch=True)
+            else:
+                conn.led_disable(batch=True)
+        if reset_state: # reset
+            if all_state:
+                conn.reset(keep_ip=False, batch=True)
+            else:
+                conn.reset(batch=True)
+            return 0
 
-    if telnet_state:
+        if telnet_state:
+            conn.run_command('exit')
+    except ValueError as e:
+        print(e)
         conn.run_command('exit')
 
 if __name__ == "__main__":
