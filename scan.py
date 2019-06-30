@@ -1,9 +1,14 @@
 #! /usr/bin/env python3
 import re
+from ipaddress import ip_network
 
-def cdp_scan(all=False, mac=None):
+spec_nets = ('169.254.','224.','225.','226.','227.','228.','229.',
+            '230.','231.','232.','233.','234.','235.','236.',
+            '237.','238.','239.','255.','127.','0.0.0.0')
+
+def cdp_scan(all=False, mac=None, arp=False):
     try:
-        from scapy.all import get_if_list, get_if_addr, load_contrib, sniff, IP
+        from scapy.all import get_if_list, get_if_addr, load_contrib, sniff, IP, conf, arping
     except ImportError:
         print('Scan functionality requires the scapy library to be installed')
         print('Use: "pip install scapy"')
@@ -19,6 +24,18 @@ def cdp_scan(all=False, mac=None):
             addr_list.append(addr)
 
     if mac:
+        if arp:
+            data = str(conf.route).splitlines()[1:]
+            conf.verb = 0
+            for x in data:
+                x_arr = x.split()
+                if not x_arr[0].startswith(spec_nets) and not x_arr[1].endswith('.255'): # remove multicast addresses
+                    ip_net = ip_network(x_arr[0] + '/' + x_arr[1]).exploded
+                    print('arp scanning ' + ip_net)
+                    scan = arping(ip_net)[0]
+                    for pack in scan:
+                        if pack[1].hwsrc == mac:
+                            return {pack[1].hwsrc: ([pack[1].psrc], pack[1].psrc)}
         p1 = sniff(iface=addr_list, timeout=360, filter="ether dst 01:00:0c:cc:cc:cc", stop_filter=lambda x: x.src == mac)
         if len(p1) and p1[-1].src == mac:
             p = [p1[-1]]

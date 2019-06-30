@@ -6,7 +6,7 @@ ap.py is a telnet based python script for configuring based functions on Cisco
 Aironet access points.
 
 The script can:
-- Locate the IP address of connected Cisco devices
+- Locate the IP address of connected Cisco devices using CDP or ARP
 - Configure the admin and enable passwords
 - Configure a static or dynamic management IP
 - Configure SSIDs with WPA2 security on both 2.4 and 5 GHz including separate SSIDs
@@ -28,7 +28,7 @@ are used to connect so the IPv6 stack should be enabled for proper functionality
 
 ## Installation
 The script makes use of the [scapy](https://github.com/secdev/scapy)
-library in order to perform CDP packet monitoring for the scan function.
+library in order to perform CDP packet monitoring and ARP scanning for the scan function.
 
 ```bash
 pip install -r requirements.txt
@@ -37,6 +37,5 @@ pip install -r requirements.txt
 ## Further Work
 Additional improvements are planned including:
 
-- Using arp scans to speed up mac address lookups
 - IPv6 support
 - Combining into a single file for portability

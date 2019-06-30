@@ -34,6 +34,9 @@ def process_arguments(argv):
                                     A CDP scan will be started to identify the IP of the device.
                                     On a factory reset device this will usually be the IPv6
                                     link-local address unless a DHCP server in present.
+         -A, --arp                  Use arp requests for the local subnets when looking up MAC addresses.
+                                    This is faster than a CDP scan when the AP is in a local subnet.
+                                    A CDP scan is run if ARP does not find the MAC address.
          -a, --all                  When used in combination with --scan the scan will run for
                                     60 seconds regardless of devices found. 
          -l, --led=<on|off>         Sets the state of the status LED on the access point.
@@ -65,7 +68,7 @@ def process_arguments(argv):
 
     __usage__ = """
         Usage: {0} [-p <pass> | --admin=<pass>] [-i <ip> | --ip=<ip>] [-c <path> | --config=<path>] [-S | --scan]
-                     [-m <mac-address> | --mac=<mac-address>] [-a | --all] [-l <on|off> | --led=<on|off>]
+                     [-m <mac-address> | --mac=<mac-address>] [-A | --arp] [-a | --all] [-l <on|off> | --led=<on|off>]
                      [-I <ip:pass> | --init=<ip:pass>] [-r | --reset] [-d <start>-<end>|off | --dhcp <start>-<end>|off]
                      [-w <on|off|clear> | --wifi=<on|off|clear>] [-5] [-2] [-s <ssid> | --ssid=<ssid>] [-k <psk> | --pass=<psk>]
     """.format(sys.argv[0])
@@ -91,13 +94,14 @@ def process_arguments(argv):
     led_state = None
     reset_state = False
     debug_state = False
+    arp_state = False
 
     if len(argv) == 1:
         print(trim(process_arguments.__doc__))
         return 1
     try:
-        opts, args = getopt.getopt(argv[1:], 'p:i:c:Sm:al:I:rw:52s:k:hd:v', ['admin=', 'ip=', 'config=',
-            'scan','mac', 'all', 'led=', 'init=', 'reset', 'wifi=', 'ssid=', 'pass=', 'help', 'dhcp='])
+        opts, args = getopt.getopt(argv[1:], 'p:i:c:Sm:al:I:rw:52s:k:hd:vA', ['admin=', 'ip=', 'config=',
+            'scan','mac', 'all', 'led=', 'init=', 'reset', 'wifi=', 'ssid=', 'pass=', 'help', 'dhcp=', 'arp'])
     except getopt.GetoptError:
         print(trim(__usage__))
         return 2
@@ -169,6 +173,8 @@ def process_arguments(argv):
                 print(' --dhcp argument is in the form <start>-<end> or off')
         elif opt in ('-v'):
             debug_state = True
+        elif opt in ('-A','--arp'):
+            arp_state = True
 
     if args:
         print(trim(__usage__))
@@ -179,7 +185,7 @@ def process_arguments(argv):
 
     if mac_addr: # mac scan
         print('Started scanning for MAC address ' + mac_addr)
-        cdp = cdp_scan(mac=mac_addr)
+        cdp = cdp_scan(mac=mac_addr,arp=arp_state)
         if cdp:
             ip  = list(cdp.values())[0]
             if ip[0]:
@@ -207,6 +213,7 @@ def process_arguments(argv):
         else:
             for mac,ip in cdp.items():
                 print('{} @ {}'.format(mac,', '.join(ip[0])))
+    conn = None
     try:
         if telnet_state: # validate login creds
             if curr_pass == '' or curr_addr == '':
@@ -260,7 +267,8 @@ def process_arguments(argv):
             conn.run_command('exit')
     except ValueError as e:
         print(e)
-        conn.run_command('exit')
+        if conn:
+            conn.run_command('exit')
 
 if __name__ == "__main__":
     exit(process_arguments(sys.argv))
