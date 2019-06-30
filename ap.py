@@ -393,12 +393,13 @@ def process_arguments(argv):
     wifi_state = None
     led_state = None
     reset_state = False
+    debug_state = False
 
     if len(argv) == 1:
         print(trim(process_arguments.__doc__))
         return 1
     try:
-        opts, args = getopt.getopt(argv[1:], 'p:i:c:Sm:al:I:rw:52s:k:hd:', ['admin=', 'ip=', 'config=',
+        opts, args = getopt.getopt(argv[1:], 'p:i:c:Sm:al:I:rw:52s:k:hd:v', ['admin=', 'ip=', 'config=',
             'scan','mac', 'all', 'led=', 'init=', 'reset', 'wifi=', 'ssid=', 'pass=', 'help', 'dhcp='])
     except getopt.GetoptError:
         print(trim(__usage__))
@@ -469,6 +470,8 @@ def process_arguments(argv):
                     dhcp_vals = arg_parts
             else:
                 print(' --dhcp argument is in the form <start>-<end> or off')
+        elif opt in ('-v'):
+            debug_state = True
 
 
     if args:
@@ -514,6 +517,8 @@ def process_arguments(argv):
             print('Options --led, --init, --reset, --wifi, --ssid require --admin and --ip to be present')
             return 2
         conn = Cisco(host=curr_addr,password=curr_pass)
+        if debug_state:
+            conn.tn.set_debuglevel(1)
     if init_state: # init
         if new_pass == '':
             print('--init requires a non-blank password')

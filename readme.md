@@ -33,3 +33,10 @@ library in order to perform CDP packet monitoring for the scan function.
 ```bash
 pip install -r requirements.txt
 ```
+
+## Further Work
+Additional improvements are planned including:
+
+- Using arp scans to speed up mac address lookups
+- IPv6 support
+- Combining into a single file for portability

@@ -46,9 +46,13 @@ class Cisco():
     def config(self):
         self.run_command('config terminal')
 
-    def run_command(self, cmd, autoreconnect=False):
+    def run_command(self, cmd, confirm=False, autoreconnect=False):
         self.tn.write(cmd.encode('ascii') + b'\n')
-        res = self.tn.read_until(b'#',3)
+        res_tup = self.tn.expect([b'\[confirm\]',b'#'], 3)
+        res = res_tup[2]
+        if confirm and res_tup[0] == 0: # confirmation dialog
+            self.tn.write(b'y')
+            res += self.tn.read_until(b'#',0.5)
         if b'\n%' in res: # detect errors
             e = re.search(r'^(%.*)\r$', res.decode('ascii'), re.MULTILINE).groups()[0]
             raise ValueError(e)
@@ -59,17 +63,6 @@ class Cisco():
             print('Connection re-established to "{}"'.format(self.hostname))
             self.config()
         return res.decode('ascii').splitlines()[1:-1]
-
-    def run_command_confirm(self, cmd):
-        self.tn.write(cmd.encode('ascii') + b'\n')
-        res_tup = self.tn.expect([b'\[confirm\]',b'#'])
-        res = res_tup[2]
-        if res_tup[1][0] == b'[confirm]':
-            self.tn.write(b'y')
-            res += self.tn.read_until(b'#',0.5)
-        if b'\n%' in res: # detect errors
-            e = re.search(r'^(%.*)\r$', res.decode('ascii'), re.MULTILINE).groups()[0]
-            raise ValueError(e)
 
     def save_and_exit(self, batch=False):
         self.run_command('end')
@@ -262,10 +255,10 @@ class Cisco():
         try:
             self.run_command('write memory')
             if keep_ip:
-                self.run_command_confirm('write erase')
+                self.run_command('write erase', confirm=True)
             else:
-                self.run_command_confirm('write default-config')
-            self.run_command_confirm('reload')
+                self.run_command('write default-config', confirm=True)
+            self.run_command('reload', confirm=True)
         except EOFError:
             print('Telnet connection closed unexpectedly')
             exit(1)
